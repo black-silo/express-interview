@@ -1,0 +1,542 @@
+openapi: 3.1.0
+info:
+  title: Express Interview API
+  version: 1.0.0
+  description: |
+    A small API for managing **projects** and the **tasks** that belong to them.
+    Data is stored in a local Supabase (Postgres) database.
+
+    Notes:
+    - Request and response bodies are JSON.
+    - Unknown fields in request bodies are ignored.
+    - Deleting a project also deletes its tasks.
+servers:
+  - url: http://localhost:3000/api
+    description: Local dev server (`npm run dev`)
+  - url: http://localhost/api
+    description: Docker Compose behind Caddy (`docker compose up`)
+
+tags:
+  - name: Health
+  - name: Projects
+  - name: Tasks
+  - name: Skills
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Liveness check
+      description: Returns OK without touching the database.
+      operationId: getHealth
+      responses:
+        '200':
+          description: Service is up
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    const: ok
+
+  /projects:
+    get:
+      tags: [Projects]
+      summary: List projects
+      operationId: listProjects
+      responses:
+        '200':
+          description: All projects, oldest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Project'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      tags: [Projects]
+      summary: Create a project
+      operationId: createProject
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectCreate'
+      responses:
+        '201':
+          description: Project created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /projects/{id}:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      tags: [Projects]
+      summary: Get a project with its tasks
+      operationId: getProject
+      responses:
+        '200':
+          description: The project, including its tasks
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectWithTasks'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      tags: [Projects]
+      summary: Update a project
+      operationId: updateProject
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectUpdate'
+      responses:
+        '200':
+          description: Updated project
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags: [Projects]
+      summary: Delete a project and its tasks
+      operationId: deleteProject
+      responses:
+        '204':
+          description: Project deleted
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /tasks:
+    get:
+      tags: [Tasks]
+      summary: List tasks
+      operationId: listTasks
+      parameters:
+        - name: project_id
+          in: query
+          required: false
+          description: Only return tasks for this project
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          required: false
+          description: Only return tasks with this status
+          schema:
+            $ref: '#/components/schemas/TaskStatus'
+      responses:
+        '200':
+          description: Matching tasks, oldest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Task'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      tags: [Tasks]
+      summary: Create a task
+      operationId: createTask
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskCreate'
+      responses:
+        '201':
+          description: Task created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          description: Invalid input, or `project_id` does not reference an existing project
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /tasks/{id}:
+    parameters:
+      - $ref: '#/components/parameters/TaskId'
+    get:
+      tags: [Tasks]
+      summary: Get a task
+      operationId: getTask
+      responses:
+        '200':
+          description: The task
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      tags: [Tasks]
+      summary: Update a task
+      operationId: updateTask
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskUpdate'
+      responses:
+        '200':
+          description: Updated task
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags: [Tasks]
+      summary: Delete a task
+      operationId: deleteTask
+      responses:
+        '204':
+          description: Task deleted
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /skills/{skill}/members:
+    get:
+      tags: [Skills]
+      summary: Find members with a skill
+      description: |
+        Returns members who have the given skill at or above `min_level`, ordered by
+        level (highest first) and then by name. Backed by the Postgres function
+        `find_members_by_skill`, called through `supabase.rpc()`.
+
+        An unknown skill returns `404`. A known skill that nobody has returns an empty list.
+      operationId: findMembersBySkill
+      parameters:
+        - name: skill
+          in: path
+          required: true
+          description: Skill name, case-insensitive
+          schema:
+            type: string
+          example: javascript
+        - name: min_level
+          in: query
+          required: false
+          description: Minimum proficiency level (1 = beginner, 5 = expert)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 5
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of results
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Matching members
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SkillMember'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: The skill does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Skill "cobol" not found
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  parameters:
+    ProjectId:
+      name: id
+      in: path
+      required: true
+      description: Project ID
+      schema:
+        type: string
+        format: uuid
+    TaskId:
+      name: id
+      in: path
+      required: true
+      description: Task ID
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+    Project:
+      type: object
+      required: [id, name, description, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: [string, 'null']
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      example:
+        id: 11111111-1111-1111-1111-111111111111
+        name: Website relaunch
+        description: Redesign and relaunch the marketing site
+        created_at: '2026-11-11T22:22:09.202333+00:00'
+        updated_at: '2026-11-11T22:22:09.202333+00:00'
+
+    ProjectWithTasks:
+      allOf:
+        - $ref: '#/components/schemas/Project'
+        - type: object
+          required: [tasks]
+          properties:
+            tasks:
+              type: array
+              items:
+                $ref: '#/components/schemas/Task'
+
+    ProjectCreate:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: [string, 'null']
+      example:
+        name: Interview demo
+        description: Sample project
+
+    ProjectUpdate:
+      type: object
+      minProperties: 1
+      description: At least one field is required.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: [string, 'null']
+      example:
+        description: Updated description
+
+    TaskStatus:
+      type: string
+      enum: [todo, in_progress, done]
+
+    Task:
+      type: object
+      required: [id, project_id, title, status, due_date, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        project_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        status:
+          $ref: '#/components/schemas/TaskStatus'
+        due_date:
+          type: [string, 'null']
+          format: date
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      example:
+        id: b7a1a14c-2fc4-4ea5-9c31-e8f579cc07cf
+        project_id: 11111111-1111-1111-1111-111111111111
+        title: Draft wireframes
+        status: done
+        due_date: '2026-11-01'
+        created_at: '2026-11-11T22:22:09.202333+00:00'
+        updated_at: '2026-11-11T22:22:09.202333+00:00'
+
+    TaskCreate:
+      type: object
+      required: [project_id, title]
+      properties:
+        project_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        status:
+          allOf:
+            - $ref: '#/components/schemas/TaskStatus'
+          default: todo
+        due_date:
+          type: [string, 'null']
+          format: date
+      example:
+        project_id: 11111111-1111-1111-1111-111111111111
+        title: Write tests
+
+    TaskUpdate:
+      type: object
+      minProperties: 1
+      description: At least one field is required. A task cannot be moved to another project.
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        status:
+          $ref: '#/components/schemas/TaskStatus'
+        due_date:
+          type: [string, 'null']
+          format: date
+      example:
+        status: in_progress
+
+    SkillMember:
+      type: object
+      required: [member_id, name, email, skill, level]
+      properties:
+        member_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        skill:
+          type: string
+          description: The skill's name as stored, in its original casing
+        level:
+          type: integer
+          minimum: 1
+          maximum: 5
+      example:
+        member_id: aaaaaaaa-0000-0000-0000-000000000001
+        name: Ada Lovelace
+        email: ada@example.com
+        skill: JavaScript
+        level: 5
+
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          description: Human-readable error message
+        details:
+          description: Extra context, such as the underlying database error message
+      example:
+        error: '"status" must be one of: todo, in_progress, done'
+
+  responses:
+    BadRequest:
+      description: Invalid input, such as a missing field, a bad status, a malformed UUID or invalid JSON
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: The record does not exist
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: Project not found
+    InternalError:
+      description: Unexpected server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: Internal server error

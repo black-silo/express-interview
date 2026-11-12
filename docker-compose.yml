@@ -1,0 +1,29 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      PORT: 3000
+      # The Supabase CLI stack runs in its own containers, published on the host.
+      SUPABASE_URL: http://host.docker.internal:54321
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    expose:
+      - "3000"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

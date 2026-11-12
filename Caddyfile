@@ -1,0 +1,7 @@
+# Plain HTTP on port 80 for local development.
+# Replace ":80" with a real domain (e.g. "api.example.com") and Caddy will
+# obtain and renew HTTPS certificates automatically.
+:80 {
+	encode gzip
+	reverse_proxy app:3000
+}

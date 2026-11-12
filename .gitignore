@@ -1,0 +1,14 @@
+node_modules/
+npm-debug.log*
+
+.env
+.env.*
+!.env.example
+
+# Supabase CLI local state
+supabase/.temp/
+supabase/.branches/
+
+.DS_Store
+.vscode/
+.idea/
