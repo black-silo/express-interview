@@ -401,7 +401,7 @@ components:
 
     TaskStatus:
       type: string
-      enum: [todo, in_progress, done]
+      enum: [todo, in_progress, in_review, done]
 
     Task:
       type: object

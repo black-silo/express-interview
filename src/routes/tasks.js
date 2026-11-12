@@ -5,7 +5,8 @@ import { badRequest, notFound, pick } from '../lib/httpError.js';
 const router = Router();
 const CREATE_FIELDS = ['project_id', 'title', 'status', 'due_date'];
 const UPDATE_FIELDS = ['title', 'status', 'due_date'];
-const STATUSES = ['todo', 'in_progress', 'done'];
+// Must match the public.task_status enum in the database.
+const STATUSES = ['todo', 'in_progress', 'in_review', 'done'];
 
 function assertValidStatus(status) {
   if (status !== undefined && !STATUSES.includes(status)) {
