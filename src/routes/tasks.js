@@ -3,9 +3,9 @@ import { supabase } from '../lib/supabase.js';
 import { badRequest, notFound, pick } from '../lib/httpError.js';
 
 const router = Router();
-const CREATE_FIELDS = ['project_id', 'title', 'status', 'due_date'];
-const UPDATE_FIELDS = ['title', 'status', 'due_date'];
-const STATUSES = ['todo', 'in_progress', 'done'];
+const CREATE_FIELDS = ['project_id', 'title', 'status', 'due_date', 'blocked_reason'];
+const UPDATE_FIELDS = ['title', 'status', 'due_date', 'blocked_reason'];
+const STATUSES = ['todo', 'in_progress', 'blocked', 'done'];
 
 function assertValidStatus(status) {
   if (status !== undefined && !STATUSES.includes(status)) {
